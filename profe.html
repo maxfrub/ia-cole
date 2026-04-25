@@ -15,61 +15,47 @@
   }
   html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
   body { display: flex; align-items: center; justify-content: center; }
-
   #login { width: 340px; display: flex; flex-direction: column; gap: 1rem; }
   #login h1 { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
   #login input { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 14px; outline: none; }
   #login input:focus { border-color: var(--accent); }
   #login button { padding: 12px; border-radius: 10px; border: none; background: var(--accent); color: white; font-family: 'DM Mono', monospace; font-size: 13px; cursor: pointer; }
   #login-error { font-family: 'DM Mono', monospace; font-size: 11px; color: #ff6666; display: none; }
-
   #panel { display: none; width: 100%; max-width: 900px; padding: 2rem; flex-direction: column; gap: 1.5rem; height: 100vh; overflow-y: auto; }
-
   .panel-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 1rem; }
   .panel-header h1 { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
-
   .modo-global { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; }
   .modo-label { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
-
   .toggle { position: relative; width: 52px; height: 28px; flex-shrink: 0; }
   .toggle input { opacity: 0; width: 0; height: 0; }
   .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 28px; cursor: pointer; transition: 0.2s; }
   .toggle-slider:before { content: ''; position: absolute; width: 20px; height: 20px; left: 4px; top: 4px; background: white; border-radius: 50%; transition: 0.2s; }
   .toggle input:checked + .toggle-slider { background: var(--green); }
   .toggle input:checked + .toggle-slider:before { transform: translateX(24px); }
-
   .seccion-titulo { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
-
   .alumnos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-
   .alumno-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s; }
   .alumno-card.clase { border-color: var(--green-border); }
-
-  .alumno-info { display: flex; flex-direction: column; gap: 4px; }
   .alumno-nombre { font-size: 14px; color: var(--text); font-weight: 500; }
   .alumno-estado { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; }
   .alumno-estado.libre { color: var(--muted); }
   .alumno-estado.clase { color: var(--green); }
-
   .alumno-btns { display: flex; gap: 6px; }
-  .alumno-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 10px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em; }
+  .alumno-btn { flex: 1; font-family: 'DM Mono', monospace; font-size: 10px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
   .alumno-btn.activar { border-color: var(--green-border); color: var(--green); }
   .alumno-btn.activar:hover { background: var(--green-dim); }
   .alumno-btn.desactivar { border-color: #6e2a2a; color: var(--red); }
   .alumno-btn.desactivar:hover { background: var(--red-dim); }
-
   #sin-alumnos { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); text-align: center; padding: 3rem; grid-column: 1/-1; }
 </style>
 </head>
 <body>
-
 <div id="login">
   <h1>panel del profesor</h1>
   <input type="password" id="pass-input" placeholder="contraseña..." />
   <div id="login-error">Contraseña incorrecta</div>
   <button onclick="login()">entrar</button>
 </div>
-
 <div id="panel">
   <div class="panel-header">
     <h1>🎓 panel del profesor</h1>
@@ -82,21 +68,16 @@
       <span class="modo-label" id="modo-texto">desactivado</span>
     </div>
   </div>
-
   <span class="seccion-titulo">alumnos conectados (<span id="num-alumnos">0</span>)</span>
-
   <div class="alumnos-grid" id="alumnos-grid">
     <div id="sin-alumnos">ningún alumno conectado aún</div>
   </div>
 </div>
-
 <script>
-  let ws;
-
-  document.getElementById('pass-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') login();
-  });
-
+  let miPassword = '';
+ 
+  document.getElementById('pass-input').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+ 
   async function login() {
     const pass = document.getElementById('pass-input').value;
     const res = await fetch('/verificar-profe', {
@@ -105,65 +86,59 @@
       body: JSON.stringify({ password: pass })
     });
     if (res.ok) {
+      miPassword = pass;
       document.getElementById('login').style.display = 'none';
       document.getElementById('panel').style.display = 'flex';
-      conectarWS();
+      actualizarPanel();
+      setInterval(actualizarPanel, 3000);
     } else {
       document.getElementById('login-error').style.display = 'block';
     }
   }
-
-  function conectarWS() {
-    ws = new WebSocket(`ws://${location.host}/ws/profe`);
-    ws.onmessage = (e) => {
-      const datos = JSON.parse(e.data);
-      if (datos.tipo === 'alumnos') {
-        actualizarAlumnos(datos.alumnos);
-        document.getElementById('toggle-clase').checked = datos.modo_clase_global;
-        document.getElementById('modo-texto').textContent = datos.modo_clase_global ? 'activado' : 'desactivado';
+ 
+  async function actualizarPanel() {
+    try {
+      const res = await fetch('/alumnos');
+      const data = await res.json();
+      document.getElementById('num-alumnos').textContent = data.alumnos.length;
+      document.getElementById('toggle-clase').checked = data.modo_clase_global;
+      document.getElementById('modo-texto').textContent = data.modo_clase_global ? 'activado' : 'desactivado';
+      const grid = document.getElementById('alumnos-grid');
+      if (data.alumnos.length === 0) {
+        grid.innerHTML = '<div id="sin-alumnos">ningún alumno conectado aún</div>';
+        return;
       }
-    };
-    ws.onclose = () => setTimeout(conectarWS, 2000);
-  }
-
-  function actualizarAlumnos(alumnos) {
-    const grid = document.getElementById('alumnos-grid');
-    document.getElementById('num-alumnos').textContent = alumnos.length;
-
-    if (alumnos.length === 0) {
-      grid.innerHTML = '<div id="sin-alumnos">ningún alumno conectado aún</div>';
-      return;
-    }
-
-    grid.innerHTML = alumnos.map(a => `
-      <div class="alumno-card ${a.modo_clase ? 'clase' : ''}">
-        <div class="alumno-info">
+      grid.innerHTML = data.alumnos.map(a => `
+        <div class="alumno-card ${a.modo_clase ? 'clase' : ''}">
           <div class="alumno-nombre">👤 ${a.nombre}</div>
-          <div class="alumno-estado ${a.modo_clase ? 'clase' : 'libre'}">
-            ${a.modo_clase ? '🎓 modo clase' : '● libre'}
+          <div class="alumno-estado ${a.modo_clase ? 'clase' : 'libre'}">${a.modo_clase ? '🎓 modo clase' : '● libre'}</div>
+          <div class="alumno-btns">
+            ${!a.modo_clase
+              ? `<button class="alumno-btn activar" onclick="cambiarAlumno('${a.id}', true)">activar clase</button>`
+              : `<button class="alumno-btn desactivar" onclick="cambiarAlumno('${a.id}', false)">quitar clase</button>`
+            }
           </div>
         </div>
-        <div class="alumno-btns">
-          ${!a.modo_clase
-            ? `<button class="alumno-btn activar" onclick="cambiarAlumno('${a.id}', true)">activar clase</button>`
-            : `<button class="alumno-btn desactivar" onclick="cambiarAlumno('${a.id}', false)">quitar clase</button>`
-          }
-        </div>
-      </div>
-    `).join('');
+      `).join('');
+    } catch {}
   }
-
-  function cambiarModoGlobal(activo) {
+ 
+  async function cambiarModoGlobal(activo) {
     document.getElementById('modo-texto').textContent = activo ? 'activado' : 'desactivado';
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ tipo: 'set_modo_clase_global', activo }));
-    }
+    await fetch('/set-modo-global', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: miPassword, activo })
+    });
   }
-
-  function cambiarAlumno(alumno_id, activo) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ tipo: 'set_modo_clase_alumno', alumno_id, activo }));
-    }
+ 
+  async function cambiarAlumno(alumno_id, activo) {
+    await fetch('/set-modo-alumno', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: miPassword, alumno_id, activo })
+    });
+    actualizarPanel();
   }
 </script>
 </body>

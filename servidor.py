@@ -1,58 +1,24 @@
-from flask import Flask, request, Response, send_from_directory, jsonify
-from flask_sock import Sock
+from flask import Flask, request, send_from_directory, jsonify
 import requests
 import json
 import os
+import time
 
 app = Flask(__name__)
-sock = Sock(app)
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 PROFE_PASSWORD = "20252026"
 
+# Estado global
 modo_clase_global = False
-clientes = {}  # ws_id -> {ws, nombre, modo_clase}
-profe_ws = {}
+clientes = {}  # token -> {nombre, modo_clase, ultimo_ping}
 
-def broadcast_alumnos():
-    muertos = []
-    for ws_id, info in clientes.items():
-        try:
-            info['ws'].send(json.dumps({
-                "tipo": "modo_clase",
-                "activo": info['modo_clase']
-            }))
-        except:
-            muertos.append(ws_id)
-    for ws_id in muertos:
-        del clientes[ws_id]
-
-def broadcast_profe():
-    lista = [{"id": k, "nombre": v["nombre"], "modo_clase": v["modo_clase"]} for k, v in clientes.items()]
-    muertos = []
-    for ws_id, ws in profe_ws.items():
-        try:
-            ws.send(json.dumps({
-                "tipo": "alumnos",
-                "alumnos": lista,
-                "modo_clase_global": modo_clase_global
-            }))
-        except:
-            muertos.append(ws_id)
-    for ws_id in muertos:
-        del profe_ws[ws_id]
-
-def notificar_alumno(ws_id, activo):
-    if ws_id in clientes:
-        try:
-            clientes[ws_id]['modo_clase'] = activo
-            clientes[ws_id]['ws'].send(json.dumps({
-                "tipo": "modo_clase",
-                "activo": activo
-            }))
-        except:
-            del clientes[ws_id]
+def limpiar_inactivos():
+    ahora = time.time()
+    muertos = [k for k, v in clientes.items() if ahora - v['ultimo_ping'] > 15]
+    for k in muertos:
+        del clientes[k]
 
 @app.route('/')
 def index():
@@ -89,69 +55,65 @@ def verificar_profe():
         return jsonify({"ok": True})
     return jsonify({"ok": False}), 401
 
-@sock.route('/ws/alumno')
-def ws_alumno(ws):
-    global modo_clase_global
-    ws_id = str(id(ws))
-    clientes[ws_id] = {"ws": ws, "nombre": "Alumno", "modo_clase": modo_clase_global}
-    ws.send(json.dumps({"tipo": "modo_clase", "activo": modo_clase_global}))
-    broadcast_profe()
-    try:
-        while True:
-            msg = ws.receive()
-            if msg is None:
-                break
-            datos = json.loads(msg)
-            if datos.get("tipo") == "nombre":
-                clientes[ws_id]["nombre"] = datos["nombre"]
-                broadcast_profe()
-            elif datos.get("tipo") == "quitar_modo_clase":
-                if datos.get("password") == PROFE_PASSWORD:
-                    clientes[ws_id]['modo_clase'] = False
-                    ws.send(json.dumps({"tipo": "modo_clase", "activo": False}))
-                    broadcast_profe()
-    except:
-        pass
-    finally:
-        if ws_id in clientes:
-            del clientes[ws_id]
-        broadcast_profe()
+# Alumno hace ping cada 5 segundos para mantenerse visible
+@app.route('/ping', methods=['POST'])
+def ping():
+    datos = request.json
+    token = datos.get("token")
+    nombre = datos.get("nombre", "Alumno")
+    if token:
+        if token not in clientes:
+            clientes[token] = {"nombre": nombre, "modo_clase": modo_clase_global}
+        clientes[token]['ultimo_ping'] = time.time()
+        clientes[token]['nombre'] = nombre
+        modo_actual = clientes[token].get('modo_clase', modo_clase_global)
+        return jsonify({"modo_clase": modo_actual})
+    return jsonify({"error": "sin token"}), 400
 
-@sock.route('/ws/profe')
-def ws_profe(ws):
-    global modo_clase_global
-    ws_id = str(id(ws))
-    profe_ws[ws_id] = ws
+# Profe obtiene lista de alumnos
+@app.route('/alumnos', methods=['GET'])
+def get_alumnos():
+    limpiar_inactivos()
     lista = [{"id": k, "nombre": v["nombre"], "modo_clase": v["modo_clase"]} for k, v in clientes.items()]
-    ws.send(json.dumps({"tipo": "alumnos", "alumnos": lista, "modo_clase_global": modo_clase_global}))
-    try:
-        while True:
-            msg = ws.receive()
-            if msg is None:
-                break
-            datos = json.loads(msg)
-            if datos.get("tipo") == "set_modo_clase_global":
-                modo_clase_global = datos.get("activo", False)
-                for ws_id_a in list(clientes.keys()):
-                    clientes[ws_id_a]['modo_clase'] = modo_clase_global
-                    try:
-                        clientes[ws_id_a]['ws'].send(json.dumps({"tipo": "modo_clase", "activo": modo_clase_global}))
-                    except:
-                        del clientes[ws_id_a]
-                broadcast_profe()
-            elif datos.get("tipo") == "set_modo_clase_alumno":
-                alumno_id = datos.get("alumno_id")
-                activo = datos.get("activo", False)
-                notificar_alumno(alumno_id, activo)
-                broadcast_profe()
-    except:
-        pass
-    finally:
-        if ws_id in profe_ws:
-            del profe_ws[ws_id]
+    return jsonify({"alumnos": lista, "modo_clase_global": modo_clase_global})
+
+# Profe cambia modo a todos
+@app.route('/set-modo-global', methods=['POST'])
+def set_modo_global():
+    global modo_clase_global
+    datos = request.json
+    if datos.get("password") != PROFE_PASSWORD:
+        return jsonify({"error": "no autorizado"}), 401
+    modo_clase_global = datos.get("activo", False)
+    for k in clientes:
+        clientes[k]['modo_clase'] = modo_clase_global
+    return jsonify({"ok": True})
+
+# Profe cambia modo a un alumno
+@app.route('/set-modo-alumno', methods=['POST'])
+def set_modo_alumno():
+    datos = request.json
+    if datos.get("password") != PROFE_PASSWORD:
+        return jsonify({"error": "no autorizado"}), 401
+    alumno_id = datos.get("alumno_id")
+    activo = datos.get("activo", False)
+    if alumno_id in clientes:
+        clientes[alumno_id]['modo_clase'] = activo
+    return jsonify({"ok": True})
+
+# Alumno quita modo clase con contraseña
+@app.route('/quitar-modo-clase', methods=['POST'])
+def quitar_modo_clase():
+    datos = request.json
+    if datos.get("password") != PROFE_PASSWORD:
+        return jsonify({"ok": False}), 401
+    token = datos.get("token")
+    if token in clientes:
+        clientes[token]['modo_clase'] = False
+    return jsonify({"ok": True})
 
 if __name__ == '__main__':
-    print("Servidor corriendo en http://localhost:3000")
-    print("Panel profe en http://localhost:3000/profe")
     port = int(os.environ.get("PORT", 3000))
+    print(f"Servidor corriendo en http://localhost:{port}")
+    print(f"Panel profe en http://localhost:{port}/profe")
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
