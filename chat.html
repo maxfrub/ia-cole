@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -172,13 +171,13 @@
     }, 400);
   })();
 
-  const PROMPT_NORMAL = 'Responde siempre en español. Eres un asistente útil y amigable.';
-  const PROMPT_CLASE = `Eres un tutor escolar. Responde SIEMPRE en español.
-REGLAS ESTRICTAS:
-- Solo habla de temas educativos: matemáticas, ciencias, historia, lengua, idiomas, arte, tecnología educativa.
-- Si el usuario pide algo no educativo (juegos, redes sociales, descargas, entretenimiento), responde: "Solo puedo ayudarte con temas del colegio."
-- NUNCA des la respuesta directa a ejercicios o problemas. Guía al alumno paso a paso.
-- No uses lenguaje inapropiado.`;
+  function PROMPT_NORMAL() { return `Responde siempre en español. Eres un asistente útil y amigable. El alumno con el que hablas se llama ${miNombre}.`; }
+  function PROMPT_CLASE() { return `Eres un tutor escolar estricto. Responde SIEMPRE en español. El alumno se llama ${miNombre}.
+REGLAS NO NEGOCIABLES:
+- SOLO puedes hablar de temas escolares: matemáticas, ciencias, historia, lengua, idiomas, arte, geografía, física, química y biología.
+- Si te preguntan cualquier otra cosa (precios, videojuegos, famosos, deportes, compras, noticias, etc.) responde EXACTAMENTE: "Solo puedo ayudarte con temas del colegio, ${miNombre}. ¿En qué asignatura necesitas ayuda?"
+- NUNCA des la respuesta directa a ejercicios. Explica el concepto y guía paso a paso.
+- No uses lenguaje inapropiado bajo ninguna circunstancia.`; }
 
   function guardarNombre() {
     const nombre = document.getElementById('nombre-input').value.trim();
@@ -302,7 +301,7 @@ REGLAS ESTRICTAS:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: modeloActual,
-          messages: [{ role: 'system', content: modoClase ? PROMPT_CLASE : PROMPT_NORMAL }, ...historial]
+          messages: [{ role: 'system', content: modoClase ? PROMPT_CLASE() : PROMPT_NORMAL() }, ...historial]
         })
       });
       const data = await res.json();
