@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -63,6 +64,11 @@
   #send svg { width: 20px; height: 20px; fill: white; }
   #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
   #empty .big { font-size: 32px; font-family: 'DM Mono', monospace; color: var(--border); }
+
+  #pantalla-carga { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 300; gap: 1.5rem; }
+  #pantalla-carga p { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 0.15em; }
+  .barra-fondo { width: 240px; height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .barra-progreso { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
   #empty p { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; }
   #modal { display: none; position: fixed; inset: 0; background: #000a; align-items: center; justify-content: center; z-index: 100; }
   #modal.visible { display: flex; }
@@ -77,7 +83,12 @@
 </style>
 </head>
 <body>
-<div id="pantalla-nombre">
+<div id="pantalla-carga">
+  <div class="barra-fondo"><div class="barra-progreso" id="barra"></div></div>
+  <p id="carga-texto">conectando...</p>
+</div>
+
+<div id="pantalla-nombre" style="display:none">
   <div id="nombre-box">
     <h1>¿cómo te llamas?</h1>
     <input type="text" id="nombre-input" placeholder="Tu nombre..." maxlength="30" />
@@ -123,6 +134,43 @@
 
   // Token único para este alumno
   const miToken = Math.random().toString(36).substr(2, 12);
+
+  // Barra de carga al iniciar
+  (async function comprobarServidor() {
+    const barra = document.getElementById('barra');
+    const texto = document.getElementById('carga-texto');
+    let progreso = 0;
+
+    const intervalo = setInterval(() => {
+      progreso = Math.min(progreso + 1.5, 90);
+      barra.style.width = progreso + '%';
+    }, 500);
+
+    const mensajes = ['conectando...', 'despertando servidor...', 'casi listo...', 'un momento...'];
+    let mi = 0;
+    const textoIntervalo = setInterval(() => {
+      texto.textContent = mensajes[mi % mensajes.length];
+      mi++;
+    }, 4000);
+
+    try {
+      await fetch('/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: miToken, nombre: '' })
+      });
+    } catch {}
+
+    clearInterval(intervalo);
+    clearInterval(textoIntervalo);
+    barra.style.width = '100%';
+    texto.textContent = '¡listo!';
+
+    setTimeout(() => {
+      document.getElementById('pantalla-carga').style.display = 'none';
+      document.getElementById('pantalla-nombre').style.display = 'flex';
+    }, 400);
+  })();
 
   const PROMPT_NORMAL = 'Responde siempre en español. Eres un asistente útil y amigable.';
   const PROMPT_CLASE = `Eres un tutor escolar. Responde SIEMPRE en español.
