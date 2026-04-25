@@ -196,7 +196,7 @@ REGLAS NO NEGOCIABLES:
     setInterval(ping, 5000);
   }
 
-  async function ping() {
+async function ping() {
     try {
       const res = await fetch('/ping', {
         method: 'POST',
@@ -204,13 +204,13 @@ REGLAS NO NEGOCIABLES:
         body: JSON.stringify({ token: miToken, nombre: miNombre })
       });
       const data = await res.json();
-      if (data.modo_clase !== modoClase) {
-        if (data.modo_clase) activarModoClase(true);
-        else desactivarModoClase();
+      if (data.modo_clase && !modoClase) {
+        activarModoClase(true);
+      } else if (!data.modo_clase && modoClase && modoClaseBloqueado) {
+        desactivarModoClase();
       }
     } catch {}
   }
-
   function activarModoClase(bloqueado = false) {
     modoClase = true; modoClaseBloqueado = bloqueado;
     document.getElementById('badgeClase').classList.add('visible');

@@ -16,7 +16,7 @@ clientes = {}  # token -> {nombre, modo_clase, ultimo_ping}
 
 def limpiar_inactivos():
     ahora = time.time()
-    muertos = [k for k, v in clientes.items() if ahora - v['ultimo_ping'] > 15]
+    muertos = [k for k, v in clientes.items() if ahora - v['ultimo_ping'] > 30]
     for k in muertos:
         del clientes[k]
 
